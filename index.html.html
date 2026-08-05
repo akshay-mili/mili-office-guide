@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mili · Custodian operations</title>
+<style>
+  /* ============================================================
+     BRAND TOKENS — Mili
+     --brand is sampled from the supplied Mili wordmark (#7C62C4).
+     Everything in this file inherits from here, so a retheme is
+     this block only. The logo is embedded in <header>.
+     ============================================================ */
+  :root{
+    --brand:#7c62c4;
+    --brand-ink:#5f47a3;
+    --brand-soft:#f1edfa;
+    --brand-line:#ded5f2;
+    --font-body:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Helvetica,Arial,sans-serif;
+    --font-display:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Helvetica,Arial,sans-serif;
+    --font-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+
+    --ink:#17151f; --ink-2:#403c4c; --ink-3:#6b6779;
+    --rule:#e5e2ec; --rule-2:#f0eef6;
+    --paper:#fbfafd; --card:#ffffff;
+
+    /* status */
+    --live:#1c6b4a;  --live-bg:#e8f3ec;
+    --build:#8a5a12; --build-bg:#fbf1de;
+    --disc:#5b6169;  --disc-bg:#eeedf2;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font:400 15px/1.6 var(--font-body);-webkit-font-smoothing:antialiased}
+  .sheet{max-width:980px;margin:0 auto;padding:38px 40px 64px}
+
+  /* ---------------- header ---------------- */
+  header{display:flex;align-items:center;justify-content:space-between;gap:20px;
+    padding-bottom:26px;border-bottom:1px solid var(--rule);flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:12px}
+  .brand .logo{display:block;height:24px;width:auto;image-rendering:-webkit-optimize-contrast}
+  .brand .div{width:1px;height:20px;background:var(--rule)}
+  .brand .ctx{font:650 15px/1.2 var(--font-body);color:var(--ink);letter-spacing:-.01em}
+  .legend{display:flex;flex-wrap:wrap;gap:16px;align-items:center;font-size:12px;color:var(--ink-3)}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+  .d-live{background:var(--live)} .d-build{background:var(--build)} .d-disc{background:var(--disc)}
+
+  /* ---------------- tabs ---------------- */
+  .tabs{display:flex;gap:2px;overflow-x:auto;border-bottom:1px solid var(--rule);
+    margin-bottom:38px;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{appearance:none;border:0;background:none;cursor:pointer;white-space:nowrap;
+    font:600 13.5px/1 var(--font-body);color:var(--ink-3);
+    padding:15px 14px 13px;border-bottom:2px solid transparent;
+    display:inline-flex;align-items:center;gap:7px}
+  .tab:hover{color:var(--ink-2)}
+  .tab[aria-selected="true"]{color:var(--brand);border-bottom-color:var(--brand)}
+  .tab .n{font:600 10.5px/1 var(--font-mono);color:var(--ink-3);
+    background:var(--rule-2);padding:3px 5px;border-radius:3px}
+  .tab[aria-selected="true"] .n{color:var(--brand);background:var(--brand-soft)}
+  .panel[hidden]{display:none}
+
+  /* ---------------- type ---------------- */
+  h1{font:700 40px/1.12 var(--font-display);letter-spacing:-.028em;margin:0 0 16px}
+  h2{font:700 24px/1.24 var(--font-display);letter-spacing:-.021em;margin:0 0 8px}
+  .lede{font-size:19.5px;line-height:1.48;color:var(--ink-2);max-width:40em;margin:0}
+  .sub{font-size:15px;color:var(--ink-3);max-width:44em;margin:16px 0 0}
+  .sec-sub{color:var(--ink-3);font-size:14.5px;margin:0 0 26px;max-width:46em;font-style:italic}
+
+  /* ---------------- status pills ---------------- */
+  .pill{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.07em;
+    text-transform:uppercase;padding:3px 8px;border-radius:3px;white-space:nowrap}
+  .p-live{color:var(--live);background:var(--live-bg)}
+  .p-build{color:var(--build);background:var(--build-bg)}
+  .p-disc{color:var(--disc);background:var(--disc-bg)}
+
+  /* ---------------- overview ---------------- */
+  .hero{border-bottom:1px solid var(--rule-2);padding-bottom:32px;margin-bottom:32px}
+  .grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:22px}
+  .g-item .k{font:600 11px/1 var(--font-mono);color:var(--brand);letter-spacing:.08em;margin:0 0 10px}
+  .g-item h4{font-size:15.5px;margin:0 0 7px;font-weight:650}
+  .g-item p{margin:0;font-size:14px;color:var(--ink-2)}
+  .stat{display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--brand-line);border-radius:5px;
+    background:var(--brand-soft);margin:32px 0 0;overflow:hidden}
+  .stat div{flex:1 1 155px;padding:18px 20px;border-right:1px solid var(--brand-line)}
+  .stat div:last-child{border-right:0}
+  .stat .v{font:700 19px/1.2 var(--font-display);letter-spacing:-.02em;color:var(--brand);margin:0 0 4px}
+  .stat .l{font-size:12.5px;color:var(--ink-3);margin:0}
+
+  /* ---------------- steps ---------------- */
+  .steps{margin:0;padding:0;list-style:none;border-top:1px solid var(--rule-2)}
+  .steps li{display:grid;grid-template-columns:32px 1fr auto;gap:16px;padding:16px 0;
+    border-bottom:1px solid var(--rule-2);align-items:start}
+  .steps .idx{font:600 12px/1.5 var(--font-mono);color:var(--ink-3);padding-top:2px}
+  .steps .t{font-weight:650;margin:0 0 4px;font-size:15.5px}
+  .steps .d{margin:0;color:var(--ink-2);font-size:14.5px;max-width:54em}
+  .steps .s{padding-top:1px;display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+
+  /* ---------------- use cards ---------------- */
+  .uses{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+  .use{background:var(--card);border:1px solid var(--rule);border-radius:5px;padding:16px 17px}
+  .use .uh{display:flex;justify-content:space-between;align-items:start;gap:12px;margin:0 0 6px}
+  .use h4{margin:0;font-size:15px;font-weight:650}
+  .use p{margin:0;font-size:13.5px;color:var(--ink-2)}
+
+  /* ---------------- callout ---------------- */
+  .callout{background:var(--brand-soft);border-left:3px solid var(--brand);
+    padding:20px 22px;border-radius:0 4px 4px 0;margin:0 0 26px}
+  .callout p{margin:0;font-size:14.5px;color:var(--ink-2);max-width:56em}
+  .callout strong{color:var(--ink)}
+
+  /* ---------------- aside ---------------- */
+  .aside{margin-top:26px;font-size:13.5px;line-height:1.62;color:var(--ink-3);max-width:58em}
+
+  /* ---------------- table ---------------- */
+  table{width:100%;border-collapse:collapse;font-size:14.5px}
+  thead th{text-align:left;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--ink-3);font-weight:650;padding:0 14px 10px 0;border-bottom:1px solid var(--rule)}
+  tbody td{padding:15px 14px 15px 0;border-bottom:1px solid var(--rule-2);
+    vertical-align:top;color:var(--ink-2)}
+  tbody td:first-child{font-weight:650;color:var(--ink);white-space:nowrap}
+  tbody td:last-child{padding-right:0}
+  .cellpills{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px}
+
+  /* ---------------- ladder ---------------- */
+  .ladder{display:grid;grid-template-columns:repeat(auto-fit,minmax(205px,1fr));gap:14px}
+  .rung{background:var(--card);border:1px solid var(--rule);border-radius:5px;padding:18px}
+  .rung .k{font:600 11px/1 var(--font-mono);color:var(--ink-3);letter-spacing:.08em;margin:0}
+  .rung h4{font-size:15.5px;margin:9px 0 8px;font-weight:650}
+  .rung p{margin:0 0 12px;font-size:13.5px;color:var(--ink-2)}
+
+  .close{margin-top:38px;padding-top:28px;border-top:1px solid var(--rule)}
+  .close p{color:var(--ink-2);max-width:54em;margin:0 0 12px;font-size:14.5px}
+  footer{margin-top:46px;padding-top:20px;border-top:1px solid var(--rule);
+    font-size:12px;color:var(--ink-3)}
+
+  @media (max-width:640px){
+    .sheet{padding:26px 20px 50px}
+    h1{font-size:31px}
+    .lede{font-size:17.5px}
+    .steps li{grid-template-columns:24px 1fr;gap:12px}
+    .steps .s{grid-column:2;justify-content:flex-start;padding-top:6px}
+    header{gap:14px}
+  }
+  @media print{
+    body{background:#fff}
+    .sheet{padding:0;max-width:none}
+    .tabs{display:none}
+    .panel[hidden]{display:block !important}
+    .panel{break-before:page;padding-top:10px}
+    .panel:first-of-type{break-before:auto}
+    .use,.rung,.stat,tr{break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <header>
+    <div class="brand">
+      <!-- Mili wordmark, embedded as base64 so the file stays self-contained -->
+      <img class="logo" alt="Mili" width="54" height="24"
+        src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEMAAAAeCAYAAAB32qNaAAAEtUlEQVR4AexXXWwUVRQ+5+62Kgj+PaiJaC0WJX1AktLUdreFJsa/8GDqkwW7s22K+IDGGLDdIa7pbP2L4UUFG7qzIUhCMICGSoIixZ2lNWkwEUMIL5WgojGiWEjB7s7xTJOh09k7u6Ukm3nYyXx77/3Oueee+82d2XsF+PiKd48tiClpNRY1Po8pxpcxJdO3pXvsjptJeWsks0pVjE/UaPpwTDFSWyPGi3Y834rx1vr0g1NTk6cQsQ8B2hBhLSKpFdnJn9TIaI09gRspexWjy0RzBBA2AuDTHLODBHxmiQJ8+VaMbBD3ImI15+i68QHA7IH46mNBl6FgM9Z5oh6BdnDMgNsRETpUJbPRl2L0RjKPc4IN7qSvtxFq/6uuCNttfrJvM8bzcaLR9kHKdSFinhC2nYA2+VIMDGClnaRnibjAtiHCPYwqN/gVuM32ISoWkxb6Uow/A5U/ANHv9kTyS7qcC9xi5PMFmcMFrYhDvhRjYKBuCkC0syBX3RMggCkise69gbpLbluhdkIP7QWC3TIfIjrNA272pRhWwpre9K0ZqKhiQT4kgjMANM6T2QaUW5rQm76wfG4Umh5az/HWcpz9/I24xMIeM4k2VIxnV7yfDE34Vgxrov07G/7Q9PAb/FSXa8lwtaaHXk/oLect23yh6eFDmh5qSyTDdyaSodZ+PTwQH16TteL5WgwrwVJCqEp6OA+R9Kt2EmrEeJZ3gNvVqHGSd20TsWj6IuN7xse9nZnnbD9nqXaNLFcVo4f7fcWxzzImGRcYw7yj/NSK6fSX1af9ZLnZXNT4CIBQ1tfN9a777n7+2z1ije8FzrVdAGJLHgTWqEqmlQU4AwKGeMSXeYCVAHg7At7F4A0MviKIDnGQ47HOzEPA1+aosUhVjB1g5k4DQj8CPAOINYxbGfcxWhCx24rJfkd7Xkov425ed53lLwMhPkZZ8Q4A8msPRa/+3c0X2HU7ATbL4lkcElUJWSQCeIo7H2Xbo4yCN0+4Gcg80ts1em8lwRAgbCjYwTYitIogjqkdmaU2NZeSv/xXhCmeTOxq/HUu/rZPIhk+gAhb7LaslIrBE3xE5uzFIeAykcueZSGu7wq9fJ08AiyigLnHydl1tvEzsVszJa+FF/pSjadmmLnXtGToA/YeZEhuNKViSDyLUwiLizvleyBgvapkWt0WVgLdnNW+mluctsr5gkw6Lu9LopgYvwGK54MiuOTKhFjACa4CmgkmDzrNXkQT2rNm4GGrn5k1VwDB/mmL5IfQbJPQJac8xeB383zQXFirDTYejO9s+GXbvsbJRDI0punh1ZzlCEN6E8FfQbOyti8V2vNu6omfrX79u5p/1Pi/nb/+B2WdELBJxpea8xQDRWBTPLXyH1lCSKJHxlscr54346l66bmCULxm+UiwRMKVnBJeIwb/vfaNl+0amie9bCjway9bYrDpHG+D/5bY75ZwJafkYvCJMb5vzWWvbKx9PH87pKvGmrBXv2me8Nx06fqJt4/O6wPsCnNTTbkYiEVPhPw68EFv9tgeT32WE/Kpcxbho4ZcDB8lWMpUymI41C6LURbDoYCjWl4ZZTEcCjiq5ZVRFsOhgKNaXhkOMf4HAAD//1Q+wwcAAAAGSURBVAMAwrnMgV1Zo4gAAAAASUVORK5CYII=">
+      <span class="div"></span>
+      <span class="ctx">Custodian operations</span>
+    </div>
+    <div class="legend">
+      <span><i class="dot d-live"></i> Live today</span>
+      <span><i class="dot d-build"></i> In build</span>
+      <span><i class="dot d-disc"></i> In active discussion</span>
+    </div>
+  </header>
+
+  <div class="tabs" role="tablist" aria-label="Sections">
+    <button class="tab" role="tab" id="t-overview"   aria-controls="p-overview"   data-k="overview">Overview</button>
+    <button class="tab" role="tab" id="t-everyday"   aria-controls="p-everyday"   data-k="everyday">In everyday work <span class="n">6</span></button>
+    <button class="tab" role="tab" id="t-opening"    aria-controls="p-opening"    data-k="opening">Account opening <span class="n">8</span></button>
+    <button class="tab" role="tab" id="t-transition" aria-controls="p-transition" data-k="transition">Firm transitions <span class="n">6</span></button>
+    <button class="tab" role="tab" id="t-workflows"  aria-controls="p-workflows"  data-k="workflows">Other workflows <span class="n">4</span></button>
+    <button class="tab" role="tab" id="t-custodians" aria-controls="p-custodians" data-k="custodians">Custodians <span class="n">4</span></button>
+  </div>
+
+  <!-- ============ OVERVIEW ============ -->
+  <div class="panel" role="tabpanel" id="p-overview" aria-labelledby="t-overview" tabindex="0" hidden>
+    <div class="hero">
+      <h1>Everything that runs through your custodians</h1>
+      <p class="lede">Mili reads your custodian data into everyday advice and automates the paperwork that follows — for one new account, or for every client of a firm you have just acquired.</p>
+      <p class="sub">Custodian work is usually described as forms. In practice it is three things: the data your advice is built on, the paperwork across an account's whole life, and the same paperwork run across an entire book when you buy a firm. Mili covers all three from one client record.</p>
+    </div>
+
+    <div class="grid3">
+      <div class="g-item">
+        <p class="k">01</p>
+        <h4>The data behind the advice</h4>
+        <p>Positions, balances, allocation and activity flow into meeting preparation, client questions and book-wide sweeps — so a review starts from current numbers, not last quarter's report.</p>
+      </div>
+      <div class="g-item">
+        <p class="k">02</p>
+        <h4>The paperwork, across the life of an account</h4>
+        <p>Opening, transfers, money movement, maintenance and trading — prepared on each custodian's own forms, checked for good order, and written back to your systems.</p>
+      </div>
+      <div class="g-item">
+        <p class="k">03</p>
+        <h4>A whole book at once</h4>
+        <p>When you acquire a firm, every client needs repapering in the same window. The same workflow runs across the acquired book instead of one household at a time.</p>
+      </div>
+    </div>
+
+    <div class="stat">
+      <div><p class="v">3 kinds of work</p><p class="l">Data, paperwork, and book transitions</p></div>
+      <div><p class="v">6 weeks</p><p class="l">Fidelity live — Schwab by quarter end</p></div>
+      <div><p class="v">5 workflows</p><p class="l">Opening, transfers, money movement, maintenance, trading</p></div>
+      <div><p class="v">0 re-keying</p><p class="l">Correct it in conversation; the packet refills</p></div>
+    </div>
+
+    <div class="close">
+      <h2>Nothing moves without you</h2>
+      <p>Every workflow that touches the outside world is two steps: Mili fills the form, you see the PDF before it goes anywhere; Mili drafts the packet, you release it. Missing inputs are named rather than assumed, and where two of your own documents disagree, the conflict is flagged instead of resolved silently.</p>
+      <p>And custodian operations is one part of the platform. The same engine that fills a transfer form also runs prospect research, meeting preparation, book-wide client queries and full planning engagements — estate, tax, divorce, family, education — from the same client record.</p>
+    </div>
+  </div>
+
+  <!-- ============ EVERYDAY ============ -->
+  <div class="panel" role="tabpanel" id="p-everyday" aria-labelledby="t-everyday" tabindex="0" hidden>
+    <h2>Custodian data in everyday work</h2>
+    <p class="sec-sub">The custodian is not only where paperwork goes — it is where the current numbers live. That data is read into the work your advisors already do each day.</p>
+
+    <div class="uses">
+      <div class="use">
+        <div class="uh"><h4>Meeting preparation</h4><span class="pill p-live">Live</span></div>
+        <p>Current positions, balances and recent activity pulled into the briefing alongside CRM, planning software and notes — so the review opens on today's numbers.</p>
+      </div>
+      <div class="use">
+        <div class="uh"><h4>Questions about a household</h4><span class="pill p-live">Live</span></div>
+        <p>Allocation, holdings, idle cash and transaction history answered directly, with the custodial source shown next to the answer.</p>
+      </div>
+      <div class="use">
+        <div class="uh"><h4>The client snapshot</h4><span class="pill p-live">Live</span></div>
+        <p>Custodial accounts sit beside CRM records, planning data and stored documents on one screen, rather than in a fourth tab.</p>
+      </div>
+      <div class="use">
+        <div class="uh"><h4>Book-wide sweeps</h4><span class="pill p-live">Live</span></div>
+        <p>Ask one question across every household — who is holding cash above a threshold, whose allocation has drifted, where concentration has built up.</p>
+      </div>
+      <div class="use">
+        <div class="uh"><h4>Account-level reconciliation</h4><span class="pill p-build">In build</span></div>
+        <p>Custodial records checked against your reporting, with breaks surfaced rather than found at month end.</p>
+      </div>
+      <div class="use">
+        <div class="uh"><h4>Status and exception alerts</h4><span class="pill p-disc">In discussion</span></div>
+        <p>Transfer progress, funding confirmation and not-in-good-order returns surfaced against the account they belong to.</p>
+      </div>
+    </div>
+
+    <p class="aside">Depth of custodial data follows the integration schedule on the Custodians tab. Everything marked live above runs on TradePMR today.</p>
+  </div>
+
+  <!-- ============ ACCOUNT OPENING ============ -->
+  <div class="panel" role="tabpanel" id="p-opening" aria-labelledby="t-opening" tabindex="0" hidden>
+    <h2>Account opening, end to end</h2>
+    <p class="sec-sub">One workflow of several, and the one that carries the most manual load. Nothing is re-keyed, and nothing leaves your desk without you seeing it.</p>
+    <ol class="steps">
+      <li><span class="idx">01</span>
+        <div><p class="t">Collect the information</p>
+        <p class="d">Client details are pulled from conversations, inbound email, meeting notes and uploaded documents, then written into your CRM — no intake form to send and chase.</p></div>
+        <span class="s"><span class="pill p-live">Live</span></span></li>
+      <li><span class="idx">02</span>
+        <div><p class="t">Fill the custodian's own forms</p>
+        <p class="d">Data is auto-typed into the custodian's actual PDFs — new account application, IRA, managed account agreement, transfer of assets, beneficiary designation.</p></div>
+        <span class="s"><span class="pill p-live">Live</span></span></li>
+      <li><span class="idx">03</span>
+        <div><p class="t">Check it for good order</p>
+        <p class="d">Every packet is checked against the custodian's requirements before it goes out, so a missing signature or unfilled field is caught here rather than a week later.</p></div>
+        <span class="s"><span class="pill p-live">Live</span></span></li>
+      <li><span class="idx">04</span>
+        <div><p class="t">Correct and refill in conversation</p>
+        <p class="d">You supply the missing detail in chat and every affected form is rebuilt. Nothing is retyped and no version drifts out of sync.</p></div>
+        <span class="s"><span class="pill p-live">Live</span></span></li>
+      <li><span class="idx">05</span>
+        <div><p class="t">Write it back to your systems</p>
+        <p class="d">The account and everything the documents revealed are written into your CRM and planning software — Salesforce, Advyzon, Redtail, eMoney.</p></div>
+        <span class="s"><span class="pill p-live">Live</span></span></li>
+      <li><span class="idx">06</span>
+        <div><p class="t">Prepare the packet for signature</p>
+        <p class="d">Signature and initial markers placed automatically, the packet assembled in signing order and sent for e-signature, with automated reminders until it is complete.</p></div>
+        <span class="s"><span class="pill p-disc">In discussion</span></span></li>
+      <li><span class="idx">07</span>
+        <div><p class="t">Submit, then watch for rejections</p>
+        <p class="d">The packet submitted to the custodian and not-in-good-order alerts surfaced against the specific field that failed.</p></div>
+        <span class="s"><span class="pill p-disc">In discussion</span></span></li>
+      <li><span class="idx">08</span>
+        <div><p class="t">Confirm funding and reconcile</p>
+        <p class="d">Funding confirmation and account-level reconciliation through the custodian API, so the account is verified open and funded without anyone logging in to check.</p></div>
+        <span class="s"><span class="pill p-disc">In discussion</span></span></li>
+    </ol>
+  </div>
+
+  <!-- ============ FIRM TRANSITIONS ============ -->
+  <div class="panel" role="tabpanel" id="p-transition" aria-labelledby="t-transition" tabindex="0" hidden>
+    <h2>Repapering an acquired book</h2>
+    <p class="sec-sub">Acquisition is where custodian paperwork stops being a task and becomes a project.</p>
+
+    <div class="callout">
+      <p><strong>One new client is a packet. An acquired firm is several hundred of them — all at once.</strong> Every household needs transfer paperwork, a new advisory agreement and fresh beneficiary designations inside the same window, and the deal economics depend on how fast the assets actually move. It is the same workflow as a single account opening, run across a book instead of a household.</p>
+    </div>
+
+    <ol class="steps">
+      <li><span class="idx">01</span>
+        <div><p class="t">Ingest the acquired book</p>
+        <p class="d">Client records, account lists, agreements and statements read out of the selling firm's systems and document stores, however they are held.</p></div>
+        <span class="s"><span class="pill p-live">Live</span></span></li>
+      <li><span class="idx">02</span>
+        <div><p class="t">Match against your existing book</p>
+        <p class="d">Households reconciled and duplicates surfaced before a single form is generated, so shared clients are not papered twice.</p></div>
+        <span class="s"><span class="pill p-build">In build</span></span></li>
+      <li><span class="idx">03</span>
+        <div><p class="t">Build the packet per household</p>
+        <p class="d">Transfer forms, the advisory agreement and beneficiary designations filled from what came across in the acquisition — per household today, across the book next.</p></div>
+        <span class="s"><span class="pill p-live">Live</span><span class="pill p-build">Bulk in build</span></span></li>
+      <li><span class="idx">04</span>
+        <div><p class="t">Send for signature across the book</p>
+        <p class="d">Every household out in one pass, each chased automatically until its packet is complete, rather than an operations team working a spreadsheet.</p></div>
+        <span class="s"><span class="pill p-disc">In discussion</span></span></li>
+      <li><span class="idx">05</span>
+        <div><p class="t">Track by household and by account</p>
+        <p class="d">Completion, outstanding signatures and not-in-good-order returns on one view, so you know what is actually holding the transition up.</p></div>
+        <span class="s"><span class="pill p-disc">In discussion</span></span></li>
+      <li><span class="idx">06</span>
+        <div><p class="t">Write the acquired clients into your systems</p>
+        <p class="d">CRM, planning software and reporting populated from the transition itself, so the book arrives ready to service rather than needing a data project afterwards.</p></div>
+        <span class="s"><span class="pill p-live">Live</span></span></li>
+    </ol>
+
+    <p class="aside">The building blocks — reading documents, filling custodian forms, good-order checking and writing back to your systems — are the same ones that run a single account opening. What is being built is running them across a book at once.</p>
+  </div>
+
+  <!-- ============ OTHER WORKFLOWS ============ -->
+  <div class="panel" role="tabpanel" id="p-workflows" aria-labelledby="t-workflows" tabindex="0" hidden>
+    <h2>The rest of the account lifecycle</h2>
+    <p class="sec-sub">Opening is the beginning. The same pattern — read the record, prepare the paperwork, check it, track it — runs across everything that happens afterwards.</p>
+    <div class="ladder">
+      <div class="rung"><p class="k">01</p><h4>Transfers &amp; ACATs</h4>
+        <p>Transfer paperwork filled from data on file, with the required-forms checklist for the specific transfer and drafted custodian support tickets when something stalls.</p>
+        <span class="pill p-live">Live</span></div>
+      <div class="rung"><p class="k">02</p><h4>Trading</h4>
+        <p>Trade instruction preparation and post-trade checks against the custodian record.</p>
+        <span class="pill p-live">Live on TradePMR</span></div>
+      <div class="rung"><p class="k">03</p><h4>Money movement</h4>
+        <p>Distributions, contributions and journals prepared and tracked through to settlement.</p>
+        <span class="pill p-build">In build</span></div>
+      <div class="rung"><p class="k">04</p><h4>Account maintenance</h4>
+        <p>Titling changes, spousal links, check-writing and beneficiary updates, against the custodian's current forms.</p>
+        <span class="pill p-build">In build</span></div>
+    </div>
+    <div class="close">
+      <h2>One platform, not four</h2>
+      <p>Operations workflows sit alongside the advisor-facing work on the same client record — so a note taken in a meeting can trigger the paperwork, the paperwork updates the record, and the next meeting is prepared from it.</p>
+    </div>
+  </div>
+
+  <!-- ============ CUSTODIANS ============ -->
+  <div class="panel" role="tabpanel" id="p-custodians" aria-labelledby="t-custodians" tabindex="0" hidden>
+    <h2>Custodian coverage</h2>
+    <p class="sec-sub">The same workflows, custodian by custodian. Forms, procedures and support paths are the custodian's own.</p>
+    <table>
+      <thead><tr><th style="width:22%">Custodian</th><th style="width:46%">What runs</th><th style="width:32%">Status</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Fidelity</td>
+          <td>The full workflow against Fidelity's own forms and procedures — data, collection, filling, good-order checking and writeback.</td>
+          <td><div class="cellpills"><span class="pill p-build">Live in 6 weeks</span></div>Integration in build</td>
+        </tr>
+        <tr>
+          <td>Schwab</td>
+          <td>The same workflow, against Schwab's own forms and procedures.</td>
+          <td><div class="cellpills"><span class="pill p-build">Available by quarter end</span></div>Integration in build</td>
+        </tr>
+        <tr>
+          <td>TradePMR</td>
+          <td>Custodial data in everyday work, transfer and account forms filled from data on file, good-order checks, trading, procedure walkthroughs, drafted support tickets and CRM writeback.</td>
+          <td><div class="cellpills"><span class="pill p-live">Live</span></div>Deepest coverage today</td>
+        </tr>
+        <tr>
+          <td>Additional custodians</td>
+          <td>The workflow is custodian-agnostic — new forms and procedures are added without changing how your team asks for the work.</td>
+          <td><div class="cellpills"><span class="pill p-disc">In discussion</span></div></td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="aside">Mili works from each custodian's own forms and procedures, and uses their APIs where they exist — account numbers, not-in-good-order alerts, funding confirmation and reconciliation. As those APIs expand, the workflow moves onto them without changing how your team asks for the work.</p>
+  </div>
+
+  <footer>Mili · Custodian operations · Capability status current as of the date of issue and subject to change.</footer>
+
+</div>
+
+<script>
+(function(){
+  var tabs   = Array.prototype.slice.call(document.querySelectorAll('.tab'));
+  var panels = Array.prototype.slice.call(document.querySelectorAll('.panel'));
+
+  function show(key, push){
+    var found = false;
+    tabs.forEach(function(t){
+      var on = t.dataset.k === key;
+      if(on) found = true;
+      t.setAttribute('aria-selected', String(on));
+      t.tabIndex = on ? 0 : -1;
+    });
+    if(!found){ return show(tabs[0].dataset.k, push); }
+    panels.forEach(function(p){ p.hidden = (p.id !== 'p-' + key); });
+    if(push && location.hash.slice(1) !== key){ history.replaceState(null, '', '#' + key); }
+    window.scrollTo(0, 0);
+  }
+
+  tabs.forEach(function(t, i){
+    t.addEventListener('click', function(){ show(t.dataset.k, true); });
+    t.addEventListener('keydown', function(e){
+      var d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+      if(!d) return;
+      e.preventDefault();
+      var n = tabs[(i + d + tabs.length) % tabs.length];
+      n.focus(); show(n.dataset.k, true);
+    });
+  });
+
+  window.addEventListener('hashchange', function(){ show(location.hash.slice(1), false); });
+  show(location.hash.slice(1) || 'overview', false);
+})();
+</script>
+</body>
+</html>
